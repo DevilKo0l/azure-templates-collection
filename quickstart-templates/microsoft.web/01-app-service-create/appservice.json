@@ -1,42 +1,54 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {},
+  "parameters": {
+    "appServicePlanName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "planSKU": {
+      "type": "string",
+      "allowedValues": ["B1", "S1", "P1v3", "P2v3"]
+    },
+    "stage": {
+      "type": "string",
+      "allowedValues": ["prod", "dev", "staging"]
+    },
+    "appServiceName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "appNumber": {
+      "type": "int"
+    }
+  },
   "functions": [],
-  "variables": {},
+  "variables": {
+    "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]"
+  },
   "resources": [
     {
-      "name": "appServicePlan1",
+      "name": "[variables('appServicePlanName')]",
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-01-01",
       "location": "[resourceGroup().location]",
       "sku": {
-        "name": "F1",
+        "name": "[parameters('planSKU')]",
         "capacity": 1
-      },
-      "tags": {
-        "displayName": "appServicePlan1"
-      },
-      "properties": {
-        "name": "appServicePlan1"
       }
     },
 
     {
-      "name": "webApp1",
+      "name": "[variables('appServiceName')]",
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-01-01",
       "location": "[resourceGroup().location]",
-      "tags": {
-        "[concat('hidden-related:', resourceGroup().id, '/providers/Microsoft.Web/serverfarms/appServicePlan1')]": "Resource",
-        "displayName": "webApp1"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', 'appServicePlan1')]"
-      ],
+      "dependsOn": ["[variables('appServicePlanName')]"],
       "properties": {
-        "name": "webApp1",
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', 'appServicePlan1')]"
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
       }
     }
   ],
