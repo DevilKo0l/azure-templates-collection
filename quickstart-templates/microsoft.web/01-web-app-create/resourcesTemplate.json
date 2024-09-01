@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appServicePlanName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "planSKU": {
+      "type": "string",
+      "allowedValues": ["B1", "S1", "P1v3", "P2v3"]
+    },
+    "stage": {
+      "type": "string",
+      "allowedValues": ["prod", "dev", "staging"]
+    },
+    "appServiceName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "appNumber": {
+      "type": "int"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]"
+  },
+  "resources": [
+    {
+      "name": "[variables('appServicePlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[parameters('planSKU')]",
+        "capacity": 1
+      }
+    },
+
+    {
+      "name": "[variables('appServiceName')]",
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": ["[variables('appServicePlanName')]"],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "siteConfig": {
+          "alwaysOn": true,
+          "use32BitWorkerProcess": false
+        },
+        "clientAffinityEnabled": false
+      }
+    }
+  ],
+  "outputs": {}
+}
