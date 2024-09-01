@@ -1,0 +1,97 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountName": {
+      "type": "string"
+    },
+    "containerName": {
+      "type": "string"
+    },
+    "appServicePlanName": {
+      "type": "string"
+    },
+    "appServiceName": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string",
+      "allowedValues": ["prod", "staging", "dev"]
+    },
+    "appNumber": {
+      "type": "int"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "storageAccountName": "[concat('st',parameters('storageAccountName'),'00',parameters('appNumber'))]",
+    "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]"
+  },
+  "resources": [
+    {
+      "name": "[variables('appServicePlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "S1"
+      }
+    },
+    {
+      "name": "[variables('appServiceName')]",
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms',variables('appServicePlanName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms',variables('appServicePlanName'))]",
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "storageAccessKey",
+              "value": "[listKeys(variables('storageAccountName'),'2023-04-01').keys[0].value]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('storageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-04-01",
+      "location": "[resourceGroup().location]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Storage/storageAccounts/blobServices",
+          "apiVersion": "2023-01-01",
+          "name": "[concat(variables('storageAccountName'), '/default')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+          ],
+          "sku": {
+            "name": "Standard_LRS",
+            "tier": "Standard"
+          }
+        },
+        {
+          "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+          "apiVersion": "2023-01-01",
+          "name": "[concat(variables('storageAccountName'), '/default/',parameters('containerName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'),'default')]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+          ]
+        }
+      ]
+    }
+  ],
+  "outputs": {}
+}
