@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageAccountName": {
+            "value": "mysa"
+        },
+        "containerName": {
+            "value": "mycontainer"
+        },
+        "appServicePlanName": {
+            "value": "myplan"
+        },
+        "appServiceName": {
+            "value": "myappservice"
+        },
+        "stage": {
+            "value": "dev"
+        },
+        "appNumber": {
+            "value": 1
+        }        
+    }
+}
