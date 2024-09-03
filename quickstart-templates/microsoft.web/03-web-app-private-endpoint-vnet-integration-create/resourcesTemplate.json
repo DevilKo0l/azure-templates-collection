@@ -33,24 +33,54 @@
             "type": "string",
             "defaultValue": "[resourceGroup().location]"
         },
-        "virtualNetworkName":{
+        
+        "subnet1Name":{
+            "type": "string"
+            
+        },
+        "subnet2Name":{
             "type": "string"
         },
-        "subnetNetName":{
+
+        "virtualNetworkCIDR":{
+            "type": "string",
+            "defaultValue": "10.0.0.0/16"
+        },
+
+        "subnet1CIDR":{
+            "type": "string",
+            "defaultValue": "10.0.1.0/24"
+        },
+        "subnet2CIDR":{
+            "type": "string",
+            "defaultValue": "10.0.2.0/24"
+        },
+        "privateEndpointName": {
+            "type": "string"
+        },
+        "nsg1Name":{
             "type": "string"
         }
 
     },
     "functions": [],
     "variables": {
+        "webAppDNSLabel": ".azurewebsites.net",
         // asp-<project, app or service>-<environment>-<###>
         "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
         // app-<project, app or service>-<environment>-<###>.azurewebsites.net
         "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
         // vnet-<network purpose>-<network region>-<###>
-        "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
+        "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+        // 	snet-<subnet purpose>-<region>-<###>
+        "subnet1Name": "[concat('snet','-',parameters('subnet1Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+        "subnet2Name": "[concat('snet','-',parameters('subnet2Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+
+        // pe-<pePurpose>-<region>-<###>
+        "privateEndpointName":"[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
     },
     "resources": [
+        //App service template
         {
             "name": "[variables('appServicePlanName')]",
             "type": "Microsoft.Web/serverfarms",
@@ -76,7 +106,7 @@
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
             }
         },
-
+        // Virtual network template
         {
             "name": "[variables('virtualNetworkName')]",
             "type": "Microsoft.Network/virtualNetworks",
@@ -88,31 +118,53 @@
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
-                        "10.0.0.0/16"
+                        "[parameters('virtualNetworkCIDR')]"
                     ]
                 },
                 "subnets": [
                     {
-                        "name": "Subnet-1",
+                        "name": "[variables('subnet1Name')]",
                         "properties": {
-                            "addressPrefix": "10.0.0.0/24",
-                            "networkSecurityGroup": {
-                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-                            }
+                            "addressPrefix": "[parameters('subnet1CIDR')]"
+                           
                         }
                     },
                     {
-                        "name": "Subnet-2",
+                        "name": "[variables('subnet2Name')]",
                         "properties": {
-                            "addressPrefix": "10.0.1.0/24",
-                            "networkSecurityGroup": {
-                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-                            }
+                            "addressPrefix": "[parameters('subnet2CIDR')]"                            
                         }
                     }
                 ]
             }
-        }
+        },
+        {
+            "name": "[variables('privateEndpointName')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet1Name'))]"
+                },
+                "privateLinkServiceConnections": [
+                {
+                    "name": "[parameters('privateLinkConnectionName')]",
+                    "properties": {
+                    "privateLinkServiceId": "[resourceId('Microsoft.Web/sites', parameters('site1_Name'))]",
+                    "groupIds": [
+                        "sites"
+                    ]
+                    }
+                }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]"
+            ]
+    }
     ],
     "outputs": {}
 }
