@@ -24,15 +24,24 @@ This is an example of how you may give instructions on setting up your project l
 ### Prerequisites
 You need to install [AZ Module](https://learn.microsoft.com/en-us/powershell/azure/install-azps-windows?view=azps-12.2.0&tabs=powershell&pivots=windows-psgallery)
 and supported version of [Powershell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.4)
+Set the powershell policy remote for less restrictive
 ```sh
 Get-ExecutionPolicy -List
 ```
 ```sh
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
+Install and update az module
+
 ```sh
 Install-Module -Name Az.Resources -AllowClobber -Scope CurrentUser
 ```
+Update az module
+```sh
+Update-Module -Name Az -Force
+```
+
+
 ### Installation
 
 1. Clone the repo
