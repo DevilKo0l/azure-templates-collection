@@ -24,23 +24,29 @@ This is an example of how you may give instructions on setting up your project l
 ### Prerequisites
 You need to install [AZ Module](https://learn.microsoft.com/en-us/powershell/azure/install-azps-windows?view=azps-12.2.0&tabs=powershell&pivots=windows-psgallery)
 and supported version of [Powershell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.4)
-Set the powershell policy remote for less restrictive
-```sh
-Get-ExecutionPolicy -List
-```
-```sh
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-Install and update az module
+* Check powershell version and available module template
+   ```sh
+   $PSVersionTable.PSVersion
+   ```
+   ```sh
+   Get-Module -Name AzureRM -ListAvailable
+   ```
+* Set the PowerShell execution policy to remote signed or less restrictive
+   ```sh
+   Get-ExecutionPolicy -List
+   ```
+   ```sh
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+* Install and update az module
 
-```sh
-Install-Module -Name Az.Resources -AllowClobber -Scope CurrentUser
-```
-Update az module
-```sh
-Update-Module -Name Az -Force
-```
-
+   ```sh
+   Install-Module -Name Az.Resources -AllowClobber -Scope CurrentUser
+   ```
+   Update az module
+   ```sh
+   Update-Module -Name Az -Force
+   ```
 
 ### Installation
 
@@ -64,10 +70,10 @@ Update-Module -Name Az -Force
       * In powershell, you open the path of template's folder you want to deploy
       * Run the script by using command below
          ```
-         ./<yourscript>.ps1    
+         ./resourcesDeploy.ps1    
          ```
    c. Execute the template using cloudshell
-      * Upload json file to cloudshell
+      * Upload both resourcesTemplate and resourcesTemplate.parameters json file to cloudshell
       * rg='<your RG name>'
       * az group create -n $rg -l westeurope
       * az group deployment create -g $rg --template-file 'storage.json'
