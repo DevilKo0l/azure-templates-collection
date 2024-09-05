@@ -15,7 +15,7 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-This repository is a collection of ARM templates used for deploying resources.
+This repository is a collection of ARM templates used for deploying custom resources and architecture design by me.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -46,13 +46,19 @@ Install-Module -Name Az.Resources -AllowClobber -Scope CurrentUser
    ```
     
 3. Deploy the template
+   a. Deploy using custom template deployment
+      * Choose the template you want and copy everything in resourceTemplate.json
+      * In azure portal search for "Deploy custom template", choose "Build your own template in the editor"
+      * Paste the tempate you coppy and fill all the parameter and deploy
    
-   Execute the template using powershell
-    ```
-    ./<yourscript>.ps1    
-    ```
-   Execute the template using cloudshell
-   * Upload json file to cloudshell
-   * rg='<your RG name>'
-   * az group create -n $rg -l westeurope
-   * az group deployment create -g $rg --template-file 'storage.json'
+   b. Deploy the template using powershell
+      * In powershell, you open the path of template's folder you want to deploy
+      * Run the script by using command below
+         ```
+         ./<yourscript>.ps1    
+         ```
+   c. Execute the template using cloudshell
+      * Upload json file to cloudshell
+      * rg='<your RG name>'
+      * az group create -n $rg -l westeurope
+      * az group deployment create -g $rg --template-file 'storage.json'
