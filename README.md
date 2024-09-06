@@ -47,6 +47,16 @@ and supported version of [Powershell](https://learn.microsoft.com/en-us/powershe
    ```sh
    Update-Module -Name Az -Force
    ```
+* If you face any error with Az command
+   ```sh
+   Uninstall-AzureRm
+   ```
+   ```sh
+   Get-Module -Listavailable Az.*
+   ```
+   ```sh
+   Install-Module -Name Az -Force -AllowClobber
+   ```
 
 ### Installation
 
@@ -56,9 +66,11 @@ and supported version of [Powershell](https://learn.microsoft.com/en-us/powershe
    ```
    
 2. Login Azure account
+   * Connect with you az account
    ```sh
    Connect-AzAccount
    ```
+   * Select the subscription you want
     
 3. Deploy the template
    a. Deploy using custom template deployment
