@@ -41,6 +41,9 @@
         "subnet2Name":{
             "type": "string"
         },
+        "nsgPurpose":{
+            "type": "string"
+        },
 
         "virtualNetworkCIDR":{
             "type": "string",
@@ -82,8 +85,7 @@
 
         // pe-<pePurpose>-<region>-<###>
         "privateEndpointName":"[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-
-        
+        "networkSecurityGroupName":"[concat('nsg','-',parameters('nsgPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
     },
     "resources": [
         //App service template
@@ -190,6 +192,22 @@
       "name": "[variables('appServicePrivateDNSLabel')]",
       "location": "global",
       "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2018-09-01",
+      "name": "[format('{0}/{1}', 'link',variables('appServicePrivateDNSLabel'))]",
+      "location": "global",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('appServicePrivateDNSLabel'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('appServicePrivateDNSLabel'))]",
         "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
       ]
     }
