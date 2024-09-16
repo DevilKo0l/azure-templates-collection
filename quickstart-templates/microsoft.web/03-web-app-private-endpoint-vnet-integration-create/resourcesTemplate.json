@@ -1,195 +1,224 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-        "appServicePlanName": {
-            "type": "string"
-        },
-        "planSKU":{
-            "type": "string",
-            "allowedValues":[
-                "B1", "S1", "P1v3", "P2v3"
-            ]
-        },
-        "appServiceName":{
-            "type": "string"
-        },
-        "appNumber":{
-            "type": "int"
-        },
-        "stage": {
-            "type": "string",
-            "allowedValues":[
-                "prod", "staging", "dev"
-            ]
-        },
-        "networkPurpose": {
-            "type": "string",
-            "allowedValues":[
-                "shared","prod","client"
-            ]
-        },
-        "networkRegion":{
-            "type": "string",
-            "defaultValue": "[resourceGroup().location]"
-        },
-        
-        "subnet1Name":{
-            "type": "string"
-            
-        },
-        "subnet2Name":{
-            "type": "string"
-        },
-        "nsgPurpose":{
-            "type": "string"
-        },
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppPlanName": {
+      "type": "string"
+    },
+    "planSKU": {
+      "type": "string",
+      "allowedValues": ["B1", "S1", "P1v3", "P2v3"]
+    },
+    "webAppName": {
+      "type": "string"
+    },
+    "appNumber": {
+      "type": "int"
+    },
+    "stage": {
+      "type": "string",
+      "allowedValues": ["prod", "staging", "dev", "test"]
+    },
+    "networkPurpose": {
+      "type": "string",
+      "allowedValues": ["shared", "server", "client"]
+    },
+    "networkRegion": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
 
-        "virtualNetworkCIDR":{
-            "type": "string",
-            "defaultValue": "10.0.0.0/16"
-        },
+    "subnet1Name": {
+      "type": "string",
+      "defaultValue": "pe"
+    },
+    "subnet2Name": {
+      "type": "string",
+      "defaultValue": "integration"
+    },
 
-        "subnet1CIDR":{
-            "type": "string",
-            "defaultValue": "10.0.1.0/24"
-        },
-        "subnet2CIDR":{
-            "type": "string",
-            "defaultValue": "10.0.2.0/24"
-        },
-        "privateEndpointName": {
-            "type": "string"
-        },
-        "nsg1Name":{
-            "type": "string"
-        },
-        "privateLinkConnectionName":{
-            "type": "string"
+    "virtualNetworkCIDR": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16"
+    },
+
+    "subnet1CIDR": {
+      "type": "string",
+      "defaultValue": "10.0.1.0/24"
+    },
+    "subnet2CIDR": {
+      "type": "string",
+      "defaultValue": "10.0.2.0/24"
+    },
+    "privateEndpointName": {
+      "type": "string",
+      "defaultValue": "webapp"
+    },
+    "privateLinkConnectionName": {
+      "type": "string"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "webAppDefaultDomainName": ".azurewebsites.net",
+    "webAppPrivateDNSZoneName": "privatelink.azurewebsites.net",
+    // asp-<project, app or service>-<environment>-<###>
+    "webAppPlanName": "[concat('asp','-',parameters('webAppPlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    // app-<project, app or service>-<environment>-<###>.azurewebsites.net
+    "webAppName": "[concat('app','-',parameters('webAppName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    // vnet-<network purpose>-<network region>-<###>
+    "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+    // 	snet-<subnet purpose>-<network purpose>-<region>-<###>
+    "subnet1Name": "[concat('snet','-',parameters('subnet1Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+    "subnet2Name": "[concat('snet','-',parameters('subnet2Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+    "subnet2Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet2Name'))]",
+
+    // pe-<pePurpose>-<region>-<###>
+    "privateEndpointName": "[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
+  },
+  "resources": [
+    //App service template
+
+    {
+      "name": "[variables('webAppPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[parameters('planSKU')]",
+        "capacity": 1
+      }
+    },
+
+    {
+      "name": "[variables('webAppName')]",
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]"
+      },
+      "resources": [
+        {
+          "name": "virtualNetwork",
+          "type": "config",
+          "apiVersion": "2018-02-01",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Web/sites/', variables('WebAppName'))]",
+            "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+          ],
+          "properties": {
+            "subnetResourceId": "[variables('subnet2Ref')]",
+            "swiftSupported": true
+          }
         }
-
+      ]
     },
-    "functions": [],
-    "variables": {
-        "appServiceDNSLabel": ".azurewebsites.net",
-        "appServicePrivateDNSLabel": ".privatelink.azurewebsites.net",
-        // asp-<project, app or service>-<environment>-<###>
-        "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
-        // app-<project, app or service>-<environment>-<###>.azurewebsites.net
-        "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
-        // vnet-<network purpose>-<network region>-<###>
-        "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-        // 	snet-<subnet purpose>-<region>-<###>
-        "subnet1Name": "[concat('snet','-',parameters('subnet1Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-        "subnet2Name": "[concat('snet','-',parameters('subnet2Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-
-        // pe-<pePurpose>-<region>-<###>
-        "privateEndpointName":"[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-        "networkSecurityGroupName":"[concat('nsg','-',parameters('nsgPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}/{1}', variables('webAppName'), 'web')]",
+      "properties": {
+        //General Setting
+        "ftpsState": "AllAllowed",
+        "alwaysOn": true,
+        "use32BitWorkerProcess": true,
+        //Vnet integration setting
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]",
+        "virtualNetworkSubnetId": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '2023-11-01').subnets[1].id]",
+        "httpsOnly": true,
+        "vnetRouteAllEnabled": true,
+        "siteConfig": {
+          "http20Enabled": true
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+      ]
     },
-    "resources": [
-        //App service template
-        {
-            "name": "[variables('appServicePlanName')]",
-            "type": "Microsoft.Web/serverfarms",
-            "apiVersion": "2023-01-01",
-            "location": "[resourceGroup().location]",
-            "sku": {
-                "name": "[parameters('planSKU')]"                
-            },           
-            "properties": {
-                "name": "appServicePlan1"
-            }
-        },
 
-        {
-            "name": "[variables('appServiceName')]",
-            "type": "Microsoft.Web/sites",
-            "apiVersion": "2023-01-01",
-            "location": "[resourceGroup().location]",           
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
-            ],
-            "properties": {                
-                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+    {
+      "type": "Microsoft.Web/sites/hostNameBindings",
+      "apiVersion": "2019-08-01",
+      "name": "[format('{0}/{1}', variables('webAppName'), format('{0}{1}', variables('webAppName'), variables('webAppDefaultDomainName')))]",
+      "properties": {
+        "siteName": "[variables('webAppName')]",
+        "hostNameType": "Verified"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+      ]
+    },
+    // Virtual network template
+
+    {
+      "name": "[variables('virtualNetworkName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-11-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": ["[parameters('virtualNetworkCIDR')]"]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnet1Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet1CIDR')]",
+              "privateEndpointNetworkPolicies": "Disabled"
             }
-        },
-        {
-            "type": "Microsoft.Web/sites/config",
-            "apiVersion": "2023-11-01",
-            "name": "[format('{0}/{1}', variables('appServiceName'), 'web')]",
+          },
+          {
+            "name": "[variables('subnet2Name')]",
             "properties": {
-                "ftpsState": "AllAllowed",
-                "alwaysOn": true,
-                "use32BitWorkerProcess": true
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]"
-            ]
-        },
-        // Virtual network template
-        {
-            "name": "[variables('virtualNetworkName')]",
-            "type": "Microsoft.Network/virtualNetworks",
-            "apiVersion": "2023-11-01",
-            "location": "[resourceGroup().location]",           
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-            ],
-            "properties": {
-                "addressSpace": {
-                    "addressPrefixes": [
-                        "[parameters('virtualNetworkCIDR')]"
-                    ]
-                },
-                "subnets": [
-                    {
-                        "name": "[variables('subnet1Name')]",
-                        "properties": {
-                            "addressPrefix": "[parameters('subnet1CIDR')]"
-                           
-                        }
-                    },
-                    {
-                        "name": "[variables('subnet2Name')]",
-                        "properties": {
-                            "addressPrefix": "[parameters('subnet2CIDR')]"                            
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "name": "[variables('privateEndpointName')]",
-            "type": "Microsoft.Network/privateEndpoints",
-            "apiVersion": "2023-11-01",
-            
-            "location": "[resourceGroup().location]",
-            "properties": {
-                "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet1Name'))]"
-                },
-                "privateLinkServiceConnections": [
+              "addressPrefix": "[parameters('subnet2CIDR')]",
+              "delegations": [
                 {
-                    "name": "[parameters('privateLinkConnectionName')]",
-                    "properties": {
-                    "privateLinkServiceId": "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]",
-                    "groupIds": [
-                        "sites"
-                    ]
-                    }
+                  "name": "delegation",
+                  "properties": {
+                    "serviceName": "Microsoft.Web/serverfarms"
+                  }
                 }
-                ]
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
-                "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]"
-            ]
+              ],
+              "privateEndpointNetworkPolicies": "Enabled"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[variables('privateEndpointName')]",
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet1Name'))]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[parameters('privateLinkConnectionName')]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Web/sites', variables('webAppName'))]",
+              "groupIds": ["sites"]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+        "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+      ]
     },
     {
       "type": "Microsoft.Network/privateDnsZones",
-      "apiVersion": "2023-11-01",
-      "name": "[variables('appServicePrivateDNSLabel')]",
+      "apiVersion": "2024-06-01",
+      "name": "[variables('webAppPrivateDNSZoneName')]",
       "location": "global",
       "dependsOn": [
         "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
@@ -197,20 +226,20 @@
     },
     {
       "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-      "apiVersion": "2018-09-01",
-      "name": "[format('{0}/{1}', 'link',variables('appServicePrivateDNSLabel'))]",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', variables('webAppPrivateDNSZoneName'), format('link-{0}', variables('webAppPrivateDNSZoneName')))]",
       "location": "global",
       "properties": {
         "registrationEnabled": false,
         "virtualNetwork": {
-          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('appServicePrivateDNSLabel'))]"
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('appServicePrivateDNSLabel'))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('webAppPrivateDNSZoneName'))]",
         "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
       ]
     }
-    ],
-    "outputs": {}
+  ],
+  "outputs": {}
 }
