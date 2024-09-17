@@ -2,7 +2,11 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "appServicePlanName": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "webAppPlanName": {
       "type": "string",
       "minLength": 3,
       "maxLength": 24
@@ -11,50 +15,74 @@
       "type": "string",
       "allowedValues": ["B1", "S1", "P1v3", "P2v3"]
     },
-    "stage": {
-      "type": "string",
-      "allowedValues": ["prod", "dev", "staging"]
-    },
-    "appServiceName": {
+    "webAppName": {
       "type": "string",
       "minLength": 3,
       "maxLength": 24
     },
+    "currentStack": {
+      "type": "string",
+      "allowedValues": ["dotnetcore", "python"]
+    },
+    "stage": {
+      "type": "string",
+      "allowedValues": ["prod", "dev", "staging"]
+    },
     "appNumber": {
-      "type": "int"
+      "type": "int",
+      "defaultValue": 1
     }
   },
   "functions": [],
   "variables": {
-    "appServicePlanName": "[concat('asp','-',parameters('appServicePlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
-    "appServiceName": "[concat('app','-',parameters('appServiceName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]"
+    "webAppPlanName": "[concat('asp','-',parameters('webAppPlanName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
+    "webAppName": "[concat('app','-',parameters('webAppName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]"
   },
   "resources": [
     {
-      "name": "[variables('appServicePlanName')]",
+      "name": "[variables('webAppPlanName')]",
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-01-01",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "sku": {
         "name": "[parameters('planSKU')]",
         "capacity": 1
       }
     },
-
     {
-      "name": "[variables('appServiceName')]",
+      "name": "[variables('webAppName')]",
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-01-01",
-      "location": "[resourceGroup().location]",
-      "dependsOn": ["[variables('appServicePlanName')]"],
+      "location": "[parameters('location')]",
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]",
+        "clientAffinityEnabled": false,
         "siteConfig": {
-          "alwaysOn": true,
-          "use32BitWorkerProcess": false
-        },
-        "clientAffinityEnabled": false
-      }
+          "metadata": [
+            {
+              "name": "CURRENT_STACK",
+              "value": "[parameters('currentStack')]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Web/sites/config",
+          "apiVersion": "2023-12-01",
+          "name": "[format('{0}/{1}', variables('webAppName'), 'web')]",
+          "properties": {
+            //General Setting
+            "alwaysOn": true,
+            "use32BitWorkerProcess": false,
+            "ftpsState": "AllAllowed"
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+          ]
+        }
+      ],
+      "dependsOn": ["[variables('webAppPlanName')]"]
     }
   ],
   "outputs": {}

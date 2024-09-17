@@ -2,17 +2,20 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "appServicePlanName": {
+    "webAppPlanName": {
       "value": "ada"
+    },
+    "webAppName": {
+      "value": "myweb"
+    },
+    "currentStack": {
+      "value": "dotnetcore"
     },
     "planSKU": {
       "value": "S1"
     },
     "stage": {
       "value": "dev"
-    },
-    "appServiceName": {
-      "value": "myweb"
     },
     "appNumber": {
       "value": 1
