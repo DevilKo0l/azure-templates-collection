@@ -6,11 +6,13 @@
       "value": "myplan"
     },
     "planSKU": {
-      "type": "string",
-      "allowedValues": ["B1", "S1", "P1v3", "P2v3"]
+      "value": "S1"
     },
     "webAppName": {
       "value": "myapp"
+    },
+    "currentStack": {
+      "value": "dotnetcore"
     },
     "appNumber": {
       "value": "1"
@@ -20,21 +22,20 @@
     },
     "networkPurpose": {
       "value": "shared"
-    },   
+    },
 
     "subnet1Name": {
       "value": "pe"
     },
     "subnet2Name": {
       "value": "integration"
-    },    
-   
-    }
+    },
+
     "privateEndpointName": {
-      "value":"mype"
+      "value": "mype"
     },
     "privateLinkConnectionName": {
-      "type": "string"
+      "value": "string"
     }
   }
 }

@@ -2,6 +2,10 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
     "webAppPlanName": {
       "type": "string"
     },
@@ -11,6 +15,10 @@
     },
     "webAppName": {
       "type": "string"
+    },
+    "currentStack": {
+      "type": "string",
+      "allowedValues": ["dotnetcore", "python"]
     },
     "appNumber": {
       "type": "int"
@@ -22,10 +30,6 @@
     "networkPurpose": {
       "type": "string",
       "allowedValues": ["shared", "server", "client"]
-    },
-    "networkRegion": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]"
     },
 
     "subnet1Name": {
@@ -67,14 +71,14 @@
     // app-<project, app or service>-<environment>-<###>.azurewebsites.net
     "webAppName": "[concat('app','-',parameters('webAppName'),'-',parameters('stage'),'-','00',parameters('appNumber'))]",
     // vnet-<network purpose>-<network region>-<###>
-    "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+    "virtualNetworkName": "[concat('vnet','-',parameters('networkPurpose'),'-',parameters('location'),'-','00',parameters('appNumber'))]",
     // 	snet-<subnet purpose>-<network purpose>-<region>-<###>
-    "subnet1Name": "[concat('snet','-',parameters('subnet1Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
-    "subnet2Name": "[concat('snet','-',parameters('subnet2Name'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]",
+    "subnet1Name": "[concat('snet','-',parameters('subnet1Name'),'-',parameters('networkPurpose'),'-',parameters('location'),'-','00',parameters('appNumber'))]",
+    "subnet2Name": "[concat('snet','-',parameters('subnet2Name'),'-',parameters('networkPurpose'),'-',parameters('location'),'-','00',parameters('appNumber'))]",
     "subnet2Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet2Name'))]",
 
     // pe-<pePurpose>-<region>-<###>
-    "privateEndpointName": "[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('networkRegion'),'-','00',parameters('appNumber'))]"
+    "privateEndpointName": "[concat('pe','-',parameters('privateEndpointName'),'-',parameters('networkPurpose'),'-',parameters('location'),'-','00',parameters('appNumber'))]"
   },
   "resources": [
     //App service template
@@ -83,7 +87,7 @@
       "name": "[variables('webAppPlanName')]",
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-01-01",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "sku": {
         "name": "[parameters('planSKU')]",
         "capacity": 1
@@ -94,19 +98,28 @@
       "name": "[variables('webAppName')]",
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-12-01",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]"
       ],
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]"
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]",
+        "clientAffinityEnabled": false,
+        "siteConfig": {
+          "metadata": [
+            {
+              "name": "CURRENT_STACK",
+              "value": "[parameters('currentStack')]"
+            }
+          ]
+        }
       },
       "resources": [
         {
           "name": "virtualNetwork",
           "type": "config",
           "apiVersion": "2018-02-01",
-          "location": "[resourceGroup().location]",
+          "location": "[parameters('location')]",
           "dependsOn": [
             "[concat('Microsoft.Web/sites/', variables('WebAppName'))]",
             "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
@@ -115,29 +128,27 @@
             "subnetResourceId": "[variables('subnet2Ref')]",
             "swiftSupported": true
           }
+        },
+        {
+          "type": "Microsoft.Web/sites/config",
+          "apiVersion": "2023-12-01",
+          "name": "[format('{0}/{1}', variables('webAppName'), 'web')]",
+          "properties": {
+            //General Setting
+            "ftpsState": "AllAllowed",
+            "alwaysOn": true,
+            "use32BitWorkerProcess": false,
+            //Vnet integration setting
+            "httpsOnly": true,
+            "vnetRouteAllEnabled": true,
+            "siteConfig": {
+              "http20Enabled": true
+            }
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+          ]
         }
-      ]
-    },
-    {
-      "type": "Microsoft.Web/sites/config",
-      "apiVersion": "2023-12-01",
-      "name": "[format('{0}/{1}', variables('webAppName'), 'web')]",
-      "properties": {
-        //General Setting
-        "ftpsState": "AllAllowed",
-        "alwaysOn": true,
-        "use32BitWorkerProcess": true,
-        //Vnet integration setting
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webAppPlanName'))]",
-        "virtualNetworkSubnetId": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '2023-11-01').subnets[1].id]",
-        "httpsOnly": true,
-        "vnetRouteAllEnabled": true,
-        "siteConfig": {
-          "http20Enabled": true
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
       ]
     },
 
@@ -159,7 +170,7 @@
       "name": "[variables('virtualNetworkName')]",
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2023-11-01",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "properties": {
         "addressSpace": {
           "addressPrefixes": ["[parameters('virtualNetworkCIDR')]"]
@@ -195,7 +206,7 @@
       "type": "Microsoft.Network/privateEndpoints",
       "apiVersion": "2023-11-01",
 
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "properties": {
         "subnet": {
           "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnet1Name'))]"
