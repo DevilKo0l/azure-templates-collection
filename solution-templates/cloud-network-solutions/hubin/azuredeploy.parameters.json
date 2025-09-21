@@ -1,0 +1,295 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "globalAritifactsLocation": {
+      "value": ""
+    },
+    "globalArtifactsLocationSasToken": {
+      "value": ""
+    },
+    "globalEnvironment": {
+      "value": "test"
+    },
+    "globalApplicationInformation": {
+      "value": {
+        "environment": "qa",
+        "appId": "HBIN",
+        "index": 1,
+        "state": "LIVE",
+        "NetskopeRangesAllow": true,
+        "location": "westeurope"
+      }
+    },
+    "globalDeploymentInformation": {
+      "value": {
+        "location": "westeurope",
+        "resourceGroups": {
+          "HubIntegration": "rg-hubin-dwe-001",
+          "nva": "rg-nva-dwe-001",
+          "agw": "rg-agw-dwe-001"
+        },
+        "G_STATE": "LIVE"
+      }
+    },
+    "globalAppId": {
+      "value": "HUBIN"
+    },
+    "globalIndex": {
+      "value": 1
+    },
+
+    "virtualNetwork": {
+      "value": {
+        "suffix": "netw",
+        "peerings": [
+          {
+            "name": "",
+            "remoteVirtualNetwork": {
+              "id": ""
+            },
+            "allowVirtualNetworkAccess": true,
+            "allowForwardedTraffic": true,
+            "allowGatewayTransit": false,
+            "useRemoteGateways": false
+          }
+        ],
+        "addressPrefixes": ["10.112.67.0/24"],
+        "dnsServers": [],
+        "enableDdosProtection": true,
+        "subnets": [
+          {
+            "subnetname": "snet-agw-dwe-0001",
+            "addressPrefix": "10.112.67.64/28",
+            "serviceEndpoints": [],
+            "delegations": [],
+            "securityRules": [
+              {
+                "name": "sr-in-allow-GatewayManager",
+                "properties": {
+                  "description": "Allows inbound ports to appgw",
+                  "protocol": "TCP",
+                  "sourcePortRange": "*",
+                  "destinationPortRanges": ["65200-65535"],
+                  "sourceAddressPrefix": "GatewayManager",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 101,
+                  "direction": "Inbound"
+                }
+              },
+              {
+                "name": "sr-in-allow-AzureLoadBalancer",
+                "properties": {
+                  "description": "Allows inbound ports to appgw",
+                  "protocol": "*",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "*",
+                  "sourceAddressPrefix": "AzureLoadBalancer",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 102,
+                  "direction": "Inbound"
+                }
+              },
+              {
+                "name": "sr-out-allow-pve",
+                "properties": {
+                  "description": "Allow subnet outbound pve",
+                  "protocol": "Tcp",
+                  "sourcePortRange": "*",
+                  "destinationPortRanges": ["443"],
+                  "sourceAddressPrefix": "10.112.67.64/28",
+                  "destinationAddressPrefix": "10.112.67.96/28",
+                  "access": "Allow",
+                  "priority": 101,
+                  "direction": "Outbound"
+                }
+              },
+              {
+                "name": "sr-in-deny-all",
+                "properties": {
+                  "description": "Denies all inbound traffic",
+                  "protocol": "*",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "*",
+                  "sourceAddressPrefix": "*",
+                  "destinationAddressPrefix": "*",
+                  "access": "Deny",
+                  "priority": 4096,
+                  "direction": "Inbound"
+                }
+              }
+            ],
+            "disableBgpRoutePropagation": false,
+            "userDefinedRoutes": []
+          }
+        ]
+      }
+    },
+
+    "keyVault": {
+      "value": {
+        "R_kvl_1": {
+          "suffix": "agw",
+          "subnet_name": "snet-pve-dwe-002",
+          "policies": {
+            "name": "add",
+            "apList": []
+          }
+        },
+        "sku": "Standard",
+        "allowedIPAddressList": [],
+        "enableRbacAuthorization": true
+      }
+    },
+
+    "appGateway": {
+      "value": {
+        "keyvaultIds": {
+          "-t": "",
+          "-p": ""
+        },
+        "deployCondition": true,
+        "suffix": "dev",
+        "sku": {
+          "name": "Standard_v2",
+          "tier": "Standard_v2",
+          "family": "Generation_2"
+        },
+        "sslPolicy": {
+          "policyType": "Predefined",
+          "policyName": "AppGwSslPolicy20220101S"
+        },
+        "publicIPAddressess": [
+          {
+            "publicIPAllocationMethod": "Static",
+            "publicIPAddressVersion": "IPv4",
+            "idleTimeoutInMinutes": 4,
+            "skuName": "Standard"
+          }
+        ],
+        "gatewayIPConfigurations": [
+          {
+            "name": "appGw01IpConfig",
+            "subnetName": "sn-tst-hbhd-10-112-64-96-28"
+          }
+        ],
+        "frontendIPConfigurations": [
+          {
+            "name": "appGw01PublicFrontendIp",
+            "type": "Public"
+          },
+          {
+            "name": "Private",
+            "type": "Private",
+            "privateIPAddress": "10.112.64.100",
+            "privateIPAllocationMethod": "Static",
+            "subnetName": "sn-tst-hbhd-10-112-64-96-28"
+          }
+        ],
+        "frontendPorts": [
+          {
+            "name": "port_443",
+            "port": 443
+          },
+          {
+            "name": "port_80",
+            "port": 80
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "",
+            "backendAddress": "",
+            "backendIPConfigurations": [],
+            "requestRoutingRuleName": ""
+          }
+        ],
+        "backendHttpSettingsCollection": [
+          {
+            "name": "",
+            "port": 443,
+            "protocol": "Https",
+            "cookieBasedAffinity": "Enabled",
+            "pickHostNameFromBackendAddress": true,
+            "hostName": "",
+            "path": "",
+            "requestTimeout": 180,
+            "probeName": "",
+            "requestRoutingRuleName": ""
+          }
+        ],
+        "httpListeners": [
+          {
+            "name": "",
+            "frontendIPConfigurationName": "Private",
+            "frontendPortName": "port_443",
+            "protocol": "Https",
+            "requireServerNameIndication": false,
+            "requestRoutingRuleName": "rrr-eoc-dw-rdm-6308-ap1",
+            "sslCertificateName": "cer-eoc-dw-rdm-6308-web-0001",
+            "hostName": "d6308-rdm.testgroup.euroclear.com",
+            "customErrorConfigurations": [],
+            "wafPolicy": {}
+          }
+        ],
+        "requestRoutingRules": [
+          {
+            "name": "rrr-eoc-dw-rdm-6308-ap1",
+            "ruleType": "Basic",
+            "httpListenerName": "lis-eoc-dw-rdm-6308-ap1",
+            "backendAddressPoolName": "bep-eoc-dw-rdm-6308-ap1",
+            "backendHttpSettingName": "hsc-eoc-dw-rdm-6308-ap1",
+            "rewriteRuleSetConfigured": false,
+            "redirectConfigurationConfigured": false,
+            "urlPathMapConfigured": false
+          }
+        ],
+        "redirectConfigurations": [],
+        "rewriteRuleSets": [],
+        "enableHttp2": false,
+        "sslCertificates": [
+          {
+            "name": "",
+            "kvlCertificateIdentifier": ""
+          }
+        ],
+        "probes": [
+          {
+            "name": "prb-eoc-dw-rdm-6308-ap1",
+            "protocol": "Https",
+            "path": "/favicon.ico",
+            "interval": 30,
+            "timeout": 30,
+            "unhealthyThreshold": 3,
+            "pickHostNameFromBackendHttpSettings": true,
+            "host": "web-eoc-dw-rdm-6308-ap1.azurewebsites.net",
+            "minServers": 0,
+            "match": {},
+            "backendHttpSettingName": "hsc-eoc-dw-rdm-6308-ap1"
+          }
+        ],
+        "trustedRootCertificates": [],
+        "sslProfiles": [],
+        "trustedClientCertificates": [],
+        "autoscaleConfiguration": {
+          "minCapacity": 2,
+          "maxCapacity": 4
+        },
+        "AppGWWAFZones": ["1", "2", "3"]
+      }
+    },
+    "R_ainServices": {
+      "value": {
+        "R_ain_1": {
+          "suffix": "nva",
+          "workspaceBased": true
+        }
+      }
+    }
+  },
+  "appSpecific": {
+    "resourceGroupName": "rg-tw-hbit-0001"
+  }
+}
